@@ -100,14 +100,20 @@ rtags = {value:key for (key, value) in tags.items()}
 def extract_string(offset, count, store):
     assert count == 1
     idx = store[offset:].index(b'\x00')
-    return store[offset:offset + idx]
+    return store[offset:offset + idx].decode('utf-8')
+
+def extract_i18nstring_array(offset, count, store):
+    if count == 1:
+        return extract_string(offset, count, store)
+    else:
+        return extract_array(offset, count, store)
 
 def extract_array(offset, count, store):
     a = []
     for _ in range(count):
         idx = store[offset:].index(b'\x00')
         value = store[offset:offset + idx]
-        a.append(value)
+        a.append(value.decode('utf-8'))
         offset = offset + idx + 1
     return a
 
@@ -132,7 +138,7 @@ ty_map = {
           6: extract_string,
           7: extract_bin,
           8: extract_array,
-          9: extract_string,
+          9: extract_i18nstring_array,
           }
 
 def extract_data(ty, offset, count, store):
