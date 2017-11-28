@@ -5,7 +5,10 @@ import sys
 import io
 import gzip
 import struct
-from backports import lzma
+if (sys.version_info.major < 3) or ((sys.version_info.major == 3) and (sys.version_info.minor < 3)):
+    from backports import lzma
+else:
+    import lzma
 from rpmfile import cpiofile
 from functools import wraps
 from rpmfile.io_extra import _SubFile
@@ -39,7 +42,7 @@ class RPMInfo(object):
 
     @classmethod
     def _read(cls, magic, fileobj):
-        if magic == '070701':
+        if magic == b'070701':
             return cls._read_new(fileobj, magic=magic)
         else:
             raise Exception('bad magic number %r' % magic)
@@ -52,7 +55,7 @@ class RPMInfo(object):
         d = coder.unpack_from(fileobj.read(coder.size))
 
         namesize = int(d[11], 16)
-        name = fileobj.read(namesize)[:-1]
+        name = fileobj.read(namesize)[:-1].decode('utf-8')
         fileobj.seek(pad(fileobj), 1)
         file_start = fileobj.tell()
         file_size = int(d[6], 16)
@@ -112,7 +115,7 @@ class RPMFile(object):
             g = self.gzip_file
             magic = g.read(2)
             while magic:
-                if magic == '07':
+                if magic == b'07':
                     magic += g.read(4)
                     member = RPMInfo._read(magic, g)
 
@@ -158,7 +161,7 @@ class RPMFile(object):
         'Return the uncompressed raw CPIO data of the RPM archive'
         if self._gzip_file is None:
             fileobj = _SubFile(self._fileobj, self.data_offset)
-            if self.headers['archive_compression'] == 'xz':
+            if self.headers['archive_compression'] in [ 'xz','lzma']:
                 self._gzip_file = lzma.LZMAFile(fileobj)
             else:
                 self._gzip_file = gzip.GzipFile(fileobj=fileobj)
